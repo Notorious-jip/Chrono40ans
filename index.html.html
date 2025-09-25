@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>40 ANS · Compte à rebours 40h (debug final)</title>
+  <style>
+    :root{
+      --bg:#0a0a0d; --fg:#f7f7fb; --muted:#a1a1aa;
+      --pri:#ff7b00; --pri2:#ffd29a; --sec:#14f195; --sec2:#9fffdc;
+      --gold:#ffd166; --gold2:#ffb703; --mint:#98f5e1;
+    }
+    html,body{height:100%}
+    *{box-sizing:border-box}
+    body{
+      margin:0; color:var(--fg);
+      font-family: Inter, ui-sans-serif, system-ui, Segoe UI, Roboto, Helvetica, Arial;
+      display:flex; align-items:center; justify-content:center; flex-direction:column; overflow:hidden;
+      background:
+        radial-gradient(1200px 1200px at 50% 10%, rgba(255,123,0,.12), transparent 60%),
+        radial-gradient(800px 800px at 80% 90%, rgba(20,241,149,.08), transparent 60%),
+        var(--bg);
+    }
+    .wrap{ width:min(1600px, 96vw); text-align:center; padding:clamp(16px,2vw,32px); }
+
+    /* Header */
+    .brand{ display:flex; flex-direction:column; align-items:center; gap:8px; margin-bottom:clamp(10px,3vh,24px); }
+    .brand .age{
+      font-weight:900; line-height:.9; letter-spacing:-.02em;
+      font-size: clamp(56px, 12vw, 200px);
+      background: linear-gradient(180deg, var(--pri), var(--pri2));
+      -webkit-background-clip:text; background-clip:text; color:transparent;
+      text-shadow: 0 0 32px rgba(255,123,0,.25), 0 0 80px rgba(255,210,154,.25);
+    }
+    .brand .tag{ font-size: clamp(16px, 2.2vw, 28px); color: var(--muted); letter-spacing:.12em; text-transform:uppercase; }
+
+    /* Chrono */
+    .timer{
+      font-variant-numeric: tabular-nums; letter-spacing:.04em; user-select:none;
+      line-height:1; font-weight:900;
+      font-size: clamp(48px, 16vw, 220px);
+      color:#eafff6;
+      text-shadow: 0 0 12px rgba(20,241,149,.35), 0 0 36px rgba(20,241,149,.25);
+      margin-bottom:20px;
+    }
+    .sep{ opacity:.85 }
+
+    /* Décennie */
+    .decade-line{
+      margin-top:18px; font-weight:700; min-height: 3.6em; line-height: 1.15;
+    }
+    .decade-line .top{
+      font-size: clamp(18px,2.6vw,36px);
+      margin-bottom: 6px; display: block; color: var(--mint);
+      text-shadow: 0 0 10px rgba(152,245,225,.25);
+    }
+    .decade-line .value-line{
+      position: relative; display:block; font-size: clamp(30px,4.2vw,64px);
+      font-weight:900; letter-spacing: 0.04em; color: var(--gold);
+      text-shadow: 0 0 12px rgba(255,209,102,.25), 0 0 28px rgba(255,183,3,.20);
+    }
+    .decade-line .value-line::after{
+      content:""; position:absolute; left:50%; transform:translateX(-50%);
+      bottom:-6px; width: 40%; height: 2px; border-radius: 2px;
+      background: linear-gradient(90deg, transparent, var(--gold2), transparent);
+      box-shadow: 0 0 12px rgba(255,183,3,.6);
+    }
+
+    /* Contrôles */
+    .controls{ display:flex; justify-content:center; gap:16px; margin-top:32px; flex-wrap:wrap; }
+    button{
+      appearance:none; border:none; border-radius:16px; padding:14px 22px; cursor:pointer;
+      font-weight:800; font-size:18px; letter-spacing:.5px; background:#141414; color:#fafafa;
+      box-shadow: 0 6px 18px rgba(0,0,0,.45), inset 0 0 0 1px #2a2a2a; transition: transform .1s ease, box-shadow .2s ease;
+    }
+    button:hover{ transform: translateY(-2px); box-shadow: 0 10px 24px rgba(0,0,0,.6); }
+    .ghost{ background:#222; color:#fafafa; }
+    .admin{ background: linear-gradient(180deg, #ffd166, #ffb703); color:#2b1d00; }
+    .hidden{ display:none !important; }
+
+    .blink{ animation: blink 1s steps(1,end) infinite } @keyframes blink{ 50%{opacity:.35} }
+
+    /* Plein écran */
+    :fullscreen .controls, .fs-active .controls { display:none !important; }
+    .fs-exit{
+      position: fixed; top: 14px; right: 14px; z-index: 60;
+      display:none; border:none; border-radius:999px; padding:10px; font-size:18px;
+      background: #111; color:#fafafa; width:44px; height:44px;
+    }
+    :fullscreen .fs-exit, .fs-active .fs-exit { display:block; }
+
+    /* Intro */
+    .intro-hide #brand, .intro-hide #display, .intro-hide #decadeLine, .intro-hide #fullscreen { display:none !important; }
+    .intro-only{ display:flex; align-items:center; justify-content:center; min-height:50vh; flex-direction:column; gap:28px;}
+    .intro-line{
+      font-weight:900; line-height:1.25; letter-spacing:.02em;
+      font-size: clamp(22px, 4vw, 36px);
+      color:#eafff6;
+      text-shadow: 0 0 14px rgba(20,241,149,.35), 0 0 30px rgba(20,241,149,.2);
+      max-width: 1100px; margin: 0 auto;
+    }
+    .intro-line.big{
+      font-size: clamp(28px, 5.8vw, 56px);
+      text-shadow: 0 0 18px rgba(20,241,149,.45), 0 0 50px rgba(20,241,149,.25);
+      letter-spacing: .01em;
+    }
+    .intro-cta{
+      display:inline-flex; align-items:center; gap:10px; padding:14px 22px; border-radius:16px;
+      background: linear-gradient(180deg, #19f39e, #0dd787); color:#032b1f; font-weight:900; letter-spacing:.5px; border:0;
+      box-shadow: 0 8px 24px rgba(0,0,0,.45);
+      font-size: clamp(18px, 3.4vw, 26px);
+    }
+
+    /* Fondu noir */
+    .fade{ position:fixed; inset:0; pointer-events:none; z-index:80; background:#000; opacity:0; }
+    .fade.show{ animation: fadehold 1000ms ease-in-out forwards; }
+    @keyframes fadehold{ 0%{opacity:0} 35%{opacity:1} 65%{opacity:1} 100%{opacity:0} }
+
+    /* Lettres */
+    .word-block{ display:inline-block; white-space:nowrap; }
+    .char{ display:inline-block; white-space:pre; opacity:0; transform: translateY(6px); will-change: transform, opacity; animation: charIn 650ms ease forwards; }
+    @keyframes charIn{ to{ opacity:1; transform: translateY(0); } }
+
+    .precount{ font-variant-numeric: tabular-nums; font-weight:900; text-align:center; margin:10vh 0 2vh; font-size: clamp(64px, 22vw, 300px); color:#eafff6; text-shadow: 0 0 18px rgba(20,241,149,.45), 0 0 48px rgba(20,241,149,.25); }
+  </style>
+</head>
+<body class="intro-hide">
+  <div class="fade" id="fade"></div>
+  <button id="exitFs" class="fs-exit" title="Quitter le plein écran" aria-label="Quitter le plein écran">↩</button>
+
+  <div class="wrap">
+    <!-- INTRO -->
+    <section id="introSection" class="intro-only">
+      <button id="btnStartIntro" class="intro-cta">▶ Lancer</button>
+      <div id="introText" class="hidden">
+        <div id="introLine1" class="intro-line"></div>
+        <div id="introLine2" class="intro-line"></div>
+        <div id="introLine3" class="intro-line"></div>
+        <div id="introLine4" class="intro-line big"></div>
+      </div>
+    </section>
+
+    <!-- HEADER (caché au chargement) -->
+    <header class="brand hidden" aria-label="En-tête 40 ans" id="brand">
+      <div class="age">40 ANS</div>
+      <div class="tag" id="brandTag">EN</div>
+    </header>
+
+    <!-- MAIN -->
+    <main>
+      <div id="preCount" class="precount hidden">10</div>
+      <div class="timer hidden" id="display" aria-live="polite">40<span class="sep">:</span>00<span class="sep">:</span>00</div>
+      <div id="decadeLine" class="decade-line hidden"></div>
+
+      <div class="controls" role="group" aria-label="Contrôles du compte à rebours">
+        <button id="fullscreen" class="ghost">⛶ Plein écran</button>
+        <button id="addHour" class="admin hidden" title="Ajouter 1h au chrono">+1h au chrono</button>
+        <!-- NOUVEAU BOUTON: réglage manuel de l'heure restante -->
+        <button id="setTime" class="admin hidden" title="Régler l'heure">⚙ Régler l’heure</button>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    // ====== Paramètres ======
+    const BASE_SECONDS = 40 * 3600; // 40h affichées
+    const ADD_HOUR_MS = 3600 * 1000;
+
+    // ====== État ======
+    let countdownStarted = false;
+    let running = false;
+    let timerId = null;
+    let lastDecadeIndex = -1;
+    let preMode = false; let preId = null; let preN = 10;
+    let endTs = 0; // échéance courante
+    let remainingInit = BASE_SECONDS; // utile si on veut relancer
+
+    // ====== DOM ======
+    const brand = document.getElementById('brand');
+    const display = document.getElementById('display');
+    const preCountEl = document.getElementById('preCount');
+    const decadeLine = document.getElementById('decadeLine');
+    const fade = document.getElementById('fade');
+    const fsBtn = document.getElementById('fullscreen');
+    const exitBtn = document.getElementById('exitFs');
+    const addHourBtn = document.getElementById('addHour');
+    const setTimeBtn = document.getElementById('setTime'); // <-- nouveau bouton
+
+    const introSection = document.getElementById('introSection');
+    const btnStartIntro = document.getElementById('btnStartIntro');
+    const introText = document.getElementById('introText');
+    const introLine1 = document.getElementById('introLine1');
+    const introLine2 = document.getElementById('introLine2');
+    const introLine3 = document.getElementById('introLine3');
+    const introLine4 = document.getElementById('introLine4');
+
+    const decades = ["2025 - 2015","2015 - 2005","2005 - 1995","1995 - 1985"];
+
+    // ====== Helpers ======
+    function getMsRemaining(){
+      if (!countdownStarted) return BASE_SECONDS * 1000; // avant démarrage, affiche 40:00:00
+      return Math.max(0, endTs - Date.now());
+    }
+
+    function setDecadeAnimatedSplit(text){
+      const base = "Nous sommes actuellement dans la décennie entre";
+      decadeLine.innerHTML = "";
+      const top = document.createElement('span'); top.className = 'top';
+      const val = document.createElement('span'); val.className = 'value-line';
+      const TOP_DELAY=60, VAL_DELAY=220;
+      for (let i=0;i<base.length;i++){ const s=document.createElement('span'); s.className='char'; s.textContent=base[i]===" "?" ":base[i]; s.style.animationDelay=(i*TOP_DELAY)+"ms"; top.appendChild(s); }
+      decadeLine.appendChild(top);
+      for (let i=0;i<text.length;i++){ const s=document.createElement('span'); s.className='char'; s.textContent=text[i]===" "?" ":text[i]; s.style.animationDelay=((base.length*TOP_DELAY)+i*VAL_DELAY)+"ms"; val.appendChild(s); }
+      decadeLine.appendChild(val);
+    }
+
+    function render(){
+      const sec = Math.ceil(getMsRemaining()/1000);
+      const h = Math.floor(sec/3600), m = Math.floor((sec%3600)/60), s = Math.floor(sec%60);
+      const sepCls = running ? 'sep blink' : 'sep';
+      display.innerHTML = `${String(h).padStart(2,'0')}<span class="${sepCls}">:</span>${String(m).padStart(2,'0')}<span class="${sepCls}">:</span>${String(s).padStart(2,'0')}`;
+
+      // ----- Décennie: NE PAS afficher avant le démarrage -----
+      if (countdownStarted){
+        const elapsedBaseSec = Math.max(0, BASE_SECONDS - Math.min(BASE_SECONDS, sec));
+        const idx = Math.min(Math.floor(elapsedBaseSec / (10*3600)), decades.length-1);
+        if (idx !== lastDecadeIndex){
+          decadeLine.classList.remove('hidden');
+          setDecadeAnimatedSplit(decades[idx]);
+          lastDecadeIndex = idx;
+        }
+      } else {
+        decadeLine.classList.add('hidden');
+      }
+    }
+
+    function step(){
+      if (!running) return;
+      render();
+      if (getMsRemaining() <= 0){
+        running = false; clearInterval(timerId); timerId = null;
+        // fin : afficher merci proprement
+        brand.classList.add('hidden');
+        display.classList.add('hidden');
+        decadeLine.classList.add('hidden');
+        showThanks();
+      }
+    }
+
+    function startMain(){
+      countdownStarted = true;
+      running = true;
+      endTs = Date.now() + remainingInit*1000; // démarre sur 40h
+      clearInterval(timerId);
+      timerId = setInterval(step, 250);
+      lastDecadeIndex = -1;
+
+      // Afficher header + chrono + (décennie gérée par render) + boutons admin
+      brand.classList.remove('hidden');
+      display.classList.remove('hidden');
+      addHourBtn.classList.remove('hidden');
+      setTimeBtn.classList.remove('hidden'); // <-- afficher le bouton réglage quand 40h démarre
+
+      render(); step();
+    }
+
+    // ====== Bouton +1h ======
+    addHourBtn.addEventListener('click', ()=>{
+      if (!countdownStarted) return;
+      endTs += ADD_HOUR_MS;
+      render();
+    });
+
+    // ====== Bouton ⚙ Régler l’heure ======
+    function parseTimeInput(inp){
+      if(!inp) return null;
+      inp = inp.trim().replace(',',':');
+      if(/^\d+(\.\d+)?$/.test(inp)){ // "12" ou "12.5"
+        const h = parseFloat(inp); if(isNaN(h)) return null;
+        return Math.max(0, Math.round(h*3600));
+      }
+      const parts = inp.split(':').map(x=>x.trim());
+      if(parts.length>=1 && parts.length<=3){
+        let h = parseInt(parts[0]||'0',10)||0;
+        let m = parseInt(parts[1]||'0',10)||0;
+        let s = parseInt(parts[2]||'0',10)||0;
+        if (m<0||m>59||s<0||s>59||h<0) return null;
+        return h*3600 + m*60 + s;
+      }
+      return null;
+    }
+
+    setTimeBtn.addEventListener('click', ()=>{
+      if (!countdownStarted) return; // uniquement une fois le 40h lancé
+      const currentSec = Math.ceil(getMsRemaining()/1000);
+      const suggestion = `${String(Math.floor(currentSec/3600)).padStart(2,'0')}:${String(Math.floor((currentSec%3600)/60)).padStart(2,'0')}:${String(currentSec%60).padStart(2,'0')}`;
+      const inp = prompt("Heure restante (format : HH | HH:MM | HH:MM:SS)", suggestion);
+      const secs = parseTimeInput(inp);
+      if(secs===null) return; // cancel ou invalide
+      endTs = Date.now() + secs*1000; // recalcule l’échéance
+      render();
+    });
+
+    // ====== Plein écran ======
+    async function enterFullscreenOrScene(){
+      const root = document.documentElement;
+      if (!document.fullscreenElement){
+        try { await root.requestFullscreen(); } catch(e){}
+      }
+      root.classList.add('fs-active');
+      document.body.classList.remove('intro-hide');
+    }
+    fsBtn.addEventListener('click', async ()=>{
+      const root = document.documentElement;
+      if (!document.fullscreenElement){
+        try { await root.requestFullscreen(); } catch(e) {}
+        root.classList.add('fs-active');
+      } else {
+        try { await document.exitFullscreen(); } catch(e) {}
+        root.classList.remove('fs-active');
+      }
+    });
+    exitBtn.addEventListener('click', async ()=>{
+      const root = document.documentElement;
+      if (document.fullscreenElement){
+        try { await document.exitFullscreen(); } catch(e){}
+      }
+      root.classList.remove('fs-active');
+    });
+
+    // ====== Intro typing ======
+    const CHAR_MS = 110, CHAR_MS_L4 = 160;
+    function typeLineLettersByWord(el, text, perChar){
+      return new Promise(resolve => {
+        el.textContent = "";
+        const tokens = text.split(/(\s+)/);
+        let delayAcc = 0;
+        tokens.forEach(tok => {
+          if (/^\s+$/.test(tok)){
+            el.appendChild(document.createTextNode(tok));
+          } else {
+            const word = document.createElement('span');
+            word.className = 'word-block';
+            for (let i=0;i<tok.length;i++){
+              const c = document.createElement('span');
+              c.className = 'char';
+              c.textContent = tok[i];
+              c.style.animationDelay = (delayAcc + i*perChar) + "ms";
+              word.appendChild(c);
+            }
+            delayAcc += tok.length * perChar;
+            el.appendChild(word);
+          }
+        });
+        setTimeout(resolve, delayAcc + 600);
+      });
+    }
+
+    const introSectionEl = document.getElementById('introSection');
+    btnStartIntro.addEventListener('click', async ()=>{
+      await enterFullscreenOrScene();
+      btnStartIntro.classList.add('hidden');
+      introText.classList.remove('hidden');
+
+      const l1 = "Bienvenue aux 40 ans en 40h !";
+      const l2 = "40 heures de fête pour célébrer 40 années de vie.";
+      const l3 = "Toutes les 10 heures, nous changerons de décennie pour revivre ensemble chaque époque.";
+      const l4 = "C’est l’heure : Julien et JP lancent 40 heures de pure folie !";
+
+      await typeLineLettersByWord(introLine1, l1, CHAR_MS);
+      await typeLineLettersByWord(introLine2, l2, CHAR_MS);
+      await typeLineLettersByWord(introLine3, l3, CHAR_MS);
+      await typeLineLettersByWord(introLine4, l4, CHAR_MS_L4);
+
+      // Masquer intro puis fondu 1s → décompte 10→1 → chrono
+      introSectionEl.classList.add('hidden');
+      fade.classList.remove('show'); void fade.offsetWidth; fade.classList.add('show');
+      setTimeout(()=>{ startPreCountdown(); }, 1000);
+    });
+
+    // ====== Décompte 10→1 ======
+    function startPreCountdown(){
+      preCountEl.classList.remove('hidden');
+      preMode = true; preN = 10; preCountEl.textContent = preN;
+      clearInterval(preId);
+      preId = setInterval(()=>{
+        preN -= 1;
+        if (preN >= 1){
+          preCountEl.textContent = preN;
+          return;
+        }
+        clearInterval(preId);
+        preCountEl.classList.add('hidden');
+        startMain();
+      }, 1000);
+    }
+
+    // ====== FIN / MERCI ======
+    function showThanks(){
+      // Masquer tout le reste
+      document.querySelector('.wrap').innerHTML = "";
+
+      // Crée un écran de remerciement centré
+      let sec = document.createElement('section');
+      sec.style.display = 'flex';
+      sec.style.alignItems = 'center';
+      sec.style.justifyContent = 'center';
+      sec.style.height = '100vh';
+      sec.style.width = '100vw';
+      sec.style.background = '#000';
+
+      const line = document.createElement('div');
+      line.textContent = 'UN GRAND MERCI 💛';
+      line.style.fontSize = 'clamp(48px, 12vw, 180px)';
+      line.style.fontWeight = '900';
+      line.style.color = '#ffd166';
+      line.style.textAlign = 'center';
+      line.style.textShadow = '0 0 24px rgba(255,209,102,.6), 0 0 48px rgba(255,183,3,.4)';
+
+      sec.appendChild(line);
+      document.body.appendChild(sec);
+    }
+
+    // Rendu initial (tout masqué sauf l'intro)
+    render();
+  </script>
+</body>
+</html>
